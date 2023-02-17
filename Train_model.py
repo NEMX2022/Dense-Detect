@@ -24,10 +24,7 @@ from keras.regularizers import l2
 from scipy.interpolate import interp1d
 from keras.utils import to_categorical
 from scipy import interp
-from on_lstm import ONLSTM
-onlstm = ONLSTM(128, 32, return_sequences=True, dropconnect=0.25)
 
-build_model1_WEIGHT_FILE = os.path.join(os.getcwd(), 'D:/peptide-2/weights1', 'model1_weights.hdf5')
 
 class Extract_outputs(Layer):
     def __init__(self, outputdim, **kwargs):
@@ -324,31 +321,19 @@ def build_model(windows=46, concat_axis=-1, denseblocks=1, layers=3, filters=96,
     # 人类 0,4416(1个)  1, 4416（2个） 2, 5520（3个） 3, 3696（4个）    4, 2160   5,1056
     # 小鼠 1,6048    2，7440
     x_1 = Reshape((1, 2, 4416))(x_1)
-    ######### OnLSTM
+    ######### BiLSTM
     # x_2 = onlstm(input1)
-    # x_2 = Bidirectional(LSTM(units=128, dropout=dropout_rate, return_sequences=True, kernel_regularizer=l2(weight_decay), merge_mode='concat'))(input1)
+    x_2 = Bidirectional(LSTM(units=128, dropout=dropout_rate, return_sequences=True, kernel_regularizer=l2(weight_decay), merge_mode='concat'))(input1)
     x_2 = BatchNormalization(axis=concat_axis,
                              gamma_regularizer=l2(weight_decay),
                              beta_regularizer=l2(weight_decay))(x_2)
-    # x_2 = Dropout(dropout_rate)(x_2)
     x_2 = Dropout(dropout_rate)(x_2)
-    print(x_2.shape)
     # x_2 = LSTM(units=128, dropout=0.25, return_sequences=True, kernel_regularizer=l2(1e-4))(input)
     x_2 = Reshape((1, 2, 2944))(x_2)     #人类 32,736  64,1472  96,2208  128,2944   160,3680  192,4416
     # x_2 = Reshape((1, 2, 4032))(x_2)  # 小鼠值 2, 4032
     #################################################################################
     x = Concatenate(axis=-1)([x_1, x_2])
-    '''
-    # 采用二维CNN捕获氨基酸之间的长距离依赖关系的特征
-    x = Conv2D(64, (3, 3), padding='same')(x)
-    x = BatchNormalization(axis=concat_axis,
-                             gamma_regularizer=l2(weight_decay),
-                             beta_regularizer=l2(weight_decay))(x)
-    x = Dropout(dropout_rate)(x)
-    x = Activation('elu')(x)
-    '''
     x = Flatten()(x)
-    #x = Dropout(dropout_rate)(x)
     x = Dropout(dropout_rate)(x)
     ##################################################################################
     # 全连接层进行预测
@@ -450,7 +435,7 @@ def figure(history, K_FOLD, fold, windows):
         show_train_history(history, 'acc', 'val_acc')
         plt.subplot(1, 2, 2)
         show_train_history(history, 'loss', 'val_loss')
-        plt.savefig("D:/peptide-2/results/picture/%d折交叉第%d折-%d.png" % (K_FOLD, fold, windows), dpi=350)  # 保存图片
+        plt.savefig("./%d折交叉第%d折-%d.png" % (K_FOLD, fold, windows), dpi=350)  # 保存图片
         plt.close()
 
     return plt_fig(history, K_FOLD, fold, windows)
@@ -465,8 +450,7 @@ if __name__ == '__main__':
     WINDOWS = 46
 
     # 打开保存结果的文件
-    res_file = open("D:/peptide-2/results/Anoph.txt", "w", encoding='utf-8')
-    #res_file = open("D:/peptide-2/results/Anoph.txt", "w", encoding='utf-8')
+    res_file = open("./Anoph.txt", "w", encoding='utf-8')
     # 创建空列表，保存每折的结果
     res = []
     # 交叉验证开始
@@ -482,17 +466,8 @@ if __name__ == '__main__':
     #for fold in [3, 4]:
 
         # 从文件读取序列片段（训练+验证，阳性+阴性）
-        # f_r_train = open("D:/BERT-peptide/10-fold/46-5-fold/Homo/Homo_train-%d.txt" %(fold), "r", encoding='utf-8')
-        # f_r_test = open("D:/BERT-peptide/10-fold/46-5-fold/Homo/Homo_test-%d.txt" % (fold), "r", encoding='utf-8')
-        # 小鼠独立测试集
-        # f_r_train = open("D:/BERT-peptide/train_and_test/Mus63-100/train_lihua.txt", "r", encoding='utf-8')
-        # f_r_test = open("D:/BERT-peptide/train_and_test/Mus63-100/test_lihua.txt", "r", encoding='utf-8')
-        #f_r_train = open("D:/BERT-peptide/10-fold/46-5-fold/Mus_train-%d.txt" %(fold), "r", encoding='utf-8')
-        #f_r_test = open("D:/BERT-peptide/10-fold/46-5-fold/Mus_test-%d.txt" % (fold), "r", encoding='utf-8')
-        #f_r_train = open("C:/Users/WangJuan/Desktop/实验结果/实验3：物种实验/Anoph/data-5-fold/Anoph_train-%d.txt" %(fold), "r", encoding='utf-8')
-        #f_r_test = open("C:/Users/WangJuan/Desktop/实验结果/实验3：物种实验/Anoph/data-5-fold/Anoph_test-%d.txt" % (fold), "r", encoding='utf-8')
-        f_r_train = open("C:/Users/WangJuan/Desktop/实验结果/实验3：物种实验/Anoph/data/train_lihua.txt", "r", encoding='utf-8')
-        f_r_test = open("C:/Users/WangJuan/Desktop/实验结果/实验3：物种实验/Anoph/data/test_lihua.txt", "r", encoding='utf-8')
+        f_r_train = open("./Anoph_train-%d.txt" %(fold), "r", encoding='utf-8')
+        f_r_test = open("./Anoph_test-%d.txt" % (fold), "r", encoding='utf-8')
 
         # 训练序列片段构建
         train_data = f_r_train.readlines()
@@ -506,19 +481,13 @@ if __name__ == '__main__':
 
         # 数据编码
         # 数据编码
-        from lihua import one_hot, Phy_Chem_Inf_4
+        from lihua import one_hot
 
         # one_hot编码序列片段
         train_X_1, train_Y = one_hot(train_data, windows=WINDOWS)
         train_Y = to_categorical(train_Y, num_classes=2)
         test_X_1, test_Y = one_hot(test_data, windows=WINDOWS)
         test_Y = to_categorical(test_Y, num_classes=2)
-        # 理化属性信息
-        train_X_2 = Phy_Chem_Inf_4(train_data, windows=WINDOWS)
-        test_X_2 = Phy_Chem_Inf_4(test_data, windows=WINDOWS)
-        # 数组拼接
-        train_X = np.concatenate((train_X_1, train_X_2), axis=2)
-        test_X = np.concatenate((test_X_1, test_X_2), axis=2)
 
         # 引入模型
         model = build_model(windows=WINDOWS)
@@ -581,8 +550,7 @@ if __name__ == '__main__':
         plt.plot(recall, precision, lw=1, alpha=0.6, label='PR fold %d (%0.4f)' % (fold, aupr_score))
 
         # 保存训练好的模型(既保存了模型图结构，又保存了模型参数)
-        #model.save('D:/peptide-2/results/Anoph-%d_fold%d.h5' % (WINDOWS, fold))
-        model.save('C:/Users/WangJuan/Desktop/实验结果/实验3：物种实验/result/model/Anoph.h5')
+        #model.save('./Anoph-%d_fold%d.h5' % (WINDOWS, fold))
     '''
     # 画第一个子图
     plt.subplot(1, 2, 1)
@@ -619,7 +587,7 @@ if __name__ == '__main__':
     plt.ylabel('Precision', fontdict={'family': 'Times New Roman', 'size': 12})
     plt.title('PR curves', fontdict={'family': 'Times New Roman', 'size': 14})
     plt.legend(loc="lower right", prop={'family': 'Times New Roman', 'size': 10})
-    plt.savefig("D:/peptide-2/results/Anoph-%d折交叉-%d.png" % (K_FOLD, WINDOWS), dpi=350)
+    plt.savefig("./Anoph-%d折交叉-%d.png" % (K_FOLD, WINDOWS), dpi=350)
     plt.close()
 
     # 关闭文件
@@ -637,7 +605,7 @@ if __name__ == '__main__':
     auroc = []
     aupr = []
 
-    f_r = open("D:/peptide-2/results/Anoph.txt", "r", encoding='utf-8')
+    f_r = open("./Anoph.txt", "r", encoding='utf-8')
     lines = f_r.readlines()
 
     for line in lines:
@@ -684,7 +652,7 @@ if __name__ == '__main__':
           "std_gmean:", "{:.4f}".format(std_gmean), "std_auroc:", "{:.4f}".format(std_auroc), "std_aupr:",
           "{:.4f}".format(std_aupr))
 
-    f_w = open("D:/peptide-2/results/Anoph-test_elu-%d.txt" % (WINDOWS), "w", encoding='utf-8')
+    f_w = open("./Anoph-test_elu-%d.txt" % (WINDOWS), "w", encoding='utf-8')
     f_w.write(
         "mean_sn: %s mean_sp: %s mean_acc: %s mean_pre: %s mean_f1: %s mean_mcc: %s mean_gmean: %s mean_auroc: %s mean_aupr: %s\n" %
         ("{:.4f}".format(mean_sn),
