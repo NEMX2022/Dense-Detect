@@ -1,10 +1,8 @@
-# 说明： 氨基酸理化信息编码
+# 说明： 序列信息编码
 # 输入： data
-# 输出： data_X
-# 来源： 2019年论文“TOXIFY: a deep learning approach to classify animal venom proteins”,总结了500个AA属性，这些属性反应了极性、二级结构、分子体积、密码子多样性和静电荷
+# 输出： data_X，data_Y
 import numpy as np
 import tensorflow as tf
-from gensim.models import Word2Vec
 pad_sequences = tf.contrib.keras.preprocessing.sequence.pad_sequences
 def one_hot(data, windows):
     # define input string
